@@ -78,6 +78,8 @@ typedef struct talkie_info
 
 #define TALKIE_DISCONNECT_MESSAGE "TALKIE-HAS-DISCONNECTED"
 
+#define ROUTER_DISCONNECT_NOTI "[TALKIE] Router has detached... but keep rocking the p2p party!"
+
 /**
  * The number of digits for a single piece of header information
  * 

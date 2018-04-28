@@ -32,11 +32,12 @@ static volatile talkie_info bigboyInfo;
 static volatile int talkieCount = 0;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_t threads[3];
+static pthread_t threads[4];
 
 // thread[0] for run_mini_server
-// thread[1] for write_to_bigboy
-// thread[2] for read_from_bigboy
+// thread[1] for listen_from_router
+// thread[2] for write_to_bigboy
+// thread[3] for read_from_bigboy
 
 typedef struct _thread_cancel_args
 {
@@ -44,6 +45,7 @@ typedef struct _thread_cancel_args
     char **msg;
 } thread_cancel_args;
 
+void *listen_from_router(void *p);
 void init_threads();
 void close_talkie();
 void cleanup();

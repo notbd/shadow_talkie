@@ -43,5 +43,5 @@ void print_talkie_join(char *name, char *ip, int isBigboy)
 
 void print_router_left()
 {
-    printf("[Note] Router has detached... but keep rocking the p2p party! \n");
+    printf("[TALKIE] Router has detached... but keep rocking the p2p party! \n");
 }

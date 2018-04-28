@@ -44,11 +44,10 @@ void init_containers()
 
 void cleanup()
 {
-    // !! ADD HERE     broadcast router disconnect message to talkies
-    // char *msg = ROUTER_DISCONNECT_MESSAGE;
-    // pthread_mutex_lock(&mutex);
-    // broadcast_data((int *)talkieSockets, msg, strlen(msg), 3);
-    // pthread_mutex_unlock(&mutex);
+    // send router disconnect message to bigboy
+    pthread_mutex_lock(&mutex);
+    broadcast_data((int *)talkieSockets, ROUTER_DISCONNECT_MESSAGE, strlen(ROUTER_DISCONNECT_MESSAGE) + 1, 3);
+    pthread_mutex_unlock(&mutex);
 
     // close router socket
     close(routerSocket);
