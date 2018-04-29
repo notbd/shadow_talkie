@@ -41,27 +41,38 @@ int main(int argc, char **argv)
     pthread_exit(NULL);
 }
 
+void close_talkie()
+{
+    endSession = 1;
+
+    // cancel threads
+    UpTo(i, 4) if (threads[i])
+        pthread_cancel(threads[i]);
+}
+
 void cleanup()
 {
+    // shutdown and close routerSocket
     if (routerSocket != -1)
     {
-        if (shutdown(routerSocket, SHUT_RDWR)) // @@ testing shutdown
+        if (shutdown(routerSocket, SHUT_RDWR))
             perror("shutdown(routerSocket)");
         close(routerSocket);
     }
+
+    // close serverSocket / doesn't need to shutdown since passive
     if (serverSocket != -1)
-    {
-        if (shutdown(serverSocket, SHUT_RDWR)) // @@ testing shutdown
-            perror("shutdown(serverSocket)");
         close(serverSocket);
-    }
+
+    // shutdown and close bigboySocket
     if (bigboySocket != -1)
     {
-        if (shutdown(bigboySocket, SHUT_RDWR)) // @@ testing shutdown
+        if (shutdown(bigboySocket, SHUT_RDWR))
             perror("shutdown(bigboySocket)");
         close(bigboySocket);
     }
 
+    // shutdown and close talkieSockets
     UpTo(i, MAX_TALKIES)
     {
         if (talkieSockets[i] != -1)
@@ -72,6 +83,7 @@ void cleanup()
         }
     }
 
+    // close chat window
     close_chat();
 }
 
@@ -98,10 +110,10 @@ void run_talkie()
     // setup myInfo
     strcpy((char *)myInfo.name, buf);
     free(buf);
-    myInfo.presence = 1;
-    write_message_to_screen("[TALKIE] Welcome, %s! Enjoy your p2p chat!\n\n[TALKIE] Chat Window:\n", (char *)myInfo.name);
+    write_message_to_screen("[TALKIE] Welcome, %s! Enjoy your p2p chat!\n\n", (char *)myInfo.name);
+    write_message_to_screen("[TALKIE] Chat Window:\n");
     write_message_to_screen("------------------------\n");
-    char *ipstring = get_local_ip();
+    char *ipstring = get_local_ipv4_ip();
     strcpy((char *)myInfo.ip, ipstring);
     free(ipstring);
 
@@ -122,7 +134,7 @@ void run_talkie()
     if (amIBigboy) 
     {
         // send myInfo to router as bigboy
-        if (send_data(routerSocket, (char *)&myInfo, sizeof(talkie_info), 1) <= 0)
+        if (send_data(routerSocket, (char *)&myInfo, sizeof(talkie_info), TYPE_INFO) <= 0)
             return;
 
         // run as server and client
@@ -148,84 +160,12 @@ void run_talkie()
         buffer = NULL;
 
         // send myInfo to router
-        if (send_data(routerSocket, (char *)&myInfo, sizeof(talkie_info), 1) <= 0)
+        if (send_data(routerSocket, (char *)&myInfo, sizeof(talkie_info), TYPE_INFO) <= 0)
             return;
 
         // run mini client
         run_mini_client();
     }
-}
-
-void *listen_from_router(void *p)
-{
-    pthread_detach(pthread_self());
-
-    char *buffer = NULL;
-    int type;
-    int discon = 0;
-
-    // keep listening for disconnection
-    while (fetch_data(routerSocket, &buffer, &type) > 0 && !endSession)
-    {
-        // make sure msg is the right one
-        if (!strcmp(buffer, ROUTER_DISCONNECT_MESSAGE))
-        {
-            discon = 1;
-            goto END_LISTEN_FROM_ROUTER;
-        }
-            
-
-        free(buffer);
-        buffer = NULL;
-    }
-
-END_LISTEN_FROM_ROUTER:
-
-    if (buffer)
-    {
-        free(buffer);
-        buffer = NULL;
-    }
-
-    if (!endSession)
-    {
-        // broadcast router disconnect msg to talkies
-        pthread_mutex_lock(&mutex);
-        broadcast_data((int *)&talkieSockets, ROUTER_DISCONNECT_NOTI, strlen(ROUTER_DISCONNECT_NOTI) + 1, 0);
-        pthread_mutex_unlock(&mutex);
-    }
-
-    return NULL;
-}
-
-
-void run_mini_client()
-{
-    // I am the bigboy!
-    if (amIBigboy)
-    {
-        // block until server part is online
-        while (serverSocket == -1)
-        { /* do nothing */
-        }
-        bigboySocket = connect_to_server(LOCAL_HOST, SERVER_PORT);
-    }
-
-    // I am a normal talkie!
-    else
-    {
-        bigboySocket = connect_to_server((char *)bigboyInfo.ip, SERVER_PORT);
-
-        // send myInfo to bigboy
-        if (send_data(bigboySocket, (char *)&myInfo, sizeof(talkie_info), 1) <= 0)
-            return;
-    }
-
-    pthread_create(&threads[2], NULL, write_to_bigboy, NULL);
-    pthread_create(&threads[3], NULL, read_from_bigboy, NULL);
-
-    pthread_join(threads[2], NULL);
-    pthread_join(threads[3], NULL);
 }
 
 void *run_mini_server(void *p)
@@ -248,7 +188,6 @@ void *run_mini_server(void *p)
     hints.ai_family = AF_INET;       /* IPv4 only */
     hints.ai_socktype = SOCK_STREAM; /* TCP */
     hints.ai_flags = AI_PASSIVE;
-    // !! correctly getaddrinfo
     int getaddrinfo_status = getaddrinfo(NULL, SERVER_PORT, &hints, &result);
     if (getaddrinfo_status)
     {
@@ -316,10 +255,42 @@ void *run_mini_server(void *p)
     return NULL;
 }
 
+void run_mini_client()
+{
+    // I am the bigboy!
+    if (amIBigboy)
+    {
+        // !! (naive) make sure server part is online
+        sleep(1);
+
+        // connect to server thread
+        bigboySocket = connect_to_server(LOCAL_HOST, SERVER_PORT);
+    }
+
+    // I am a normal talkie!
+    else
+    {
+        // connect to bigboy
+        bigboySocket = connect_to_server((char *)bigboyInfo.ip, SERVER_PORT);
+
+        // send myInfo to bigboy
+        if (send_data(bigboySocket, (char *)&myInfo, sizeof(talkie_info), TYPE_INFO) <= 0)
+            return;
+    }
+
+    // create threads to handle data
+    pthread_create(&threads[2], NULL, write_to_bigboy, NULL);
+    pthread_create(&threads[3], NULL, read_from_bigboy, NULL);
+
+    pthread_join(threads[2], NULL);
+    pthread_join(threads[3], NULL);
+}
+
 void *process_talkie(void *p)
 {
     pthread_detach(pthread_self());
 
+    // set up resources and tools
     intptr_t talkieSocketIndex = (intptr_t)p;
     int talkieSocket = talkieSockets[talkieSocketIndex];
     talkie_info currInfo;
@@ -333,19 +304,30 @@ void *process_talkie(void *p)
             goto END_PROCESS_TALKIE;
 
         // chat msg: broadcast to all
-        if (!type)
+        if (type == TYPE_CHAT_MSG)
         {
             pthread_mutex_lock(&mutex);
-            broadcast_data((int *)&talkieSockets, buffer, strlen(buffer) + 1, 0);
+            broadcast_data((int *)&talkieSockets, buffer, strlen(buffer) + 1, TYPE_CHAT_MSG);
             pthread_mutex_unlock(&mutex);
         }
 
         // info from non-bigboy talkie
-        if (type == 1)
+        if (type == TYPE_INFO)
+        {
+            // save the info
             memcpy((void *)&currInfo, buffer, sizeof(talkie_info));
 
+            // broadcast joining msg to everyone
+            char *msg = calloc(1, 256);
+            sprintf(msg, "[TALKIE] %s joined the chat!", currInfo.name);
+            pthread_mutex_lock(&mutex);
+            broadcast_data((int *)&talkieSockets, msg, strlen(msg) + 1, TYPE_OTHER_MSG);
+            pthread_mutex_unlock(&mutex);
+            free(msg);
+        }  
+
         // disconnected msg
-        else if (type == 3)
+        if (type == TYPE_OTHER_MSG)
             if (!strcmp(buffer, TALKIE_DISCONNECT_MESSAGE))
                 goto END_PROCESS_TALKIE;
 
@@ -357,6 +339,8 @@ void *process_talkie(void *p)
     }
 
 END_PROCESS_TALKIE:
+
+    // clean up
 
     if (buffer)
     {
@@ -372,40 +356,82 @@ END_PROCESS_TALKIE:
     // broadcast talkie disconnected msg
     char *msg = calloc(1, 256);
     sprintf(msg, "[TALKIE] %s has left.", currInfo.name);
-    broadcast_data((int *)&talkieSockets, msg, strlen(msg) + 1, 0);
+    broadcast_data((int *)&talkieSockets, msg, strlen(msg) + 1, TYPE_OTHER_MSG);
     free(msg);
     pthread_mutex_unlock(&mutex);
 
     return NULL;
 }
 
+void *listen_from_router(void *p)
+{
+    pthread_detach(pthread_self());
+
+    // set up tools
+    char *buffer = NULL;
+    int type;
+
+    // keep listening for disconnection
+    while (fetch_data(routerSocket, &buffer, &type) > 0 && !endSession)
+    {
+        // make sure msg is the right one
+        if (!strcmp(buffer, ROUTER_DISCONNECT_MESSAGE))
+            goto END_LISTEN_FROM_ROUTER;
+
+        free(buffer);
+        buffer = NULL;
+    }
+
+END_LISTEN_FROM_ROUTER:
+
+    if (buffer)
+    {
+        free(buffer);
+        buffer = NULL;
+    }
+
+    if (!endSession)
+    {
+        // broadcast router disconnect msg to talkies
+        pthread_mutex_lock(&mutex);
+        broadcast_data((int *)&talkieSockets, ROUTER_DISCONNECT_NOTI, strlen(ROUTER_DISCONNECT_NOTI) + 1, TYPE_OTHER_MSG);
+        pthread_mutex_unlock(&mutex);
+    }
+
+    return NULL;
+}
+
 int connect_to_server(const char *host, const char *port)
 {
-
+    // init a new socket
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 
+    // init addrinfo
     struct addrinfo hints, *result;
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_INET;       /* IPv4 only */
     hints.ai_socktype = SOCK_STREAM; /* TCP */
-
     int getaddrinfo_status = getaddrinfo(host, port, &hints, &result);
     if (getaddrinfo_status)
     {
         fprintf(stderr, "getaddrinfo(): %s\n", gai_strerror(getaddrinfo_status));
         exit(1);
     }
+
+    // connect!
     if (connect(sock_fd, result->ai_addr, result->ai_addrlen) == -1)
     {
         perror("connect()");
         exit(1);
     }
+
     freeaddrinfo(result);
     return sock_fd;
 }
 
 void thread_cancellation_handler(void *arg)
 {
+    // make sure resources are clean when the thread got cancelled
     printf("Cancellation handler\n");
     thread_cancel_args *a = (thread_cancel_args *)arg;
     char **msg = a->msg;
@@ -447,7 +473,7 @@ void *write_to_bigboy(void *arg)
 
         // send the msg to bigboy as chat msg
         msg = create_message((char *)myInfo.name, buffer);
-        retval = send_data(bigboySocket, msg, strlen(msg) + 1, 0);
+        retval = send_data(bigboySocket, msg, strlen(msg) + 1, TYPE_CHAT_MSG);
 
         // clean up buffer and msg
         free(buffer);
@@ -482,11 +508,11 @@ void *read_from_bigboy(void *arg)
         if ((retval = fetch_data(bigboySocket, &buffer, &type)) > 0)
         {
             // chat message
-            if (!type)
+            if (type == TYPE_CHAT_MSG)
                 write_message_to_screen("%s\n", buffer);
 
             // disconnecting msg 
-            else if (type == 3)
+            else if (type == TYPE_OTHER_MSG)
                 write_message_to_screen("%s\n", buffer); // !! better handling later
         }
         free(buffer);
@@ -497,12 +523,3 @@ void *read_from_bigboy(void *arg)
     return 0;
 }
 
-void close_talkie()
-{
-    endSession = 1;
-
-    // cancel threads
-    UpTo(i, 4)
-        if (threads[i])
-            pthread_cancel(threads[i]);
-}

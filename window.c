@@ -4,6 +4,11 @@
  * @ Illinois, 2018
  */
 
+/**
+ * Using window.c interface with courtesy from CS241 @ illinois
+ * 
+ */
+
 #include "includes/window.h"
 
 void close_chat() {

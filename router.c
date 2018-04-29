@@ -36,17 +36,11 @@ void close_router()
     endSession = 1;
 }
 
-void init_containers()
-{
-    UpTo(i, MAX_TALKIES)
-        talkieSockets[i] = -1;
-}
-
 void cleanup()
 {
-    // send router disconnect message to bigboy
+    // send disconnect message to bigboy
     pthread_mutex_lock(&mutex);
-    broadcast_data((int *)talkieSockets, ROUTER_DISCONNECT_MESSAGE, strlen(ROUTER_DISCONNECT_MESSAGE) + 1, 3);
+    broadcast_data((int *)talkieSockets, ROUTER_DISCONNECT_MESSAGE, strlen(ROUTER_DISCONNECT_MESSAGE) + 1, TYPE_OTHER_MSG);
     pthread_mutex_unlock(&mutex);
 
     // close router socket
@@ -106,7 +100,8 @@ void run_router()
     }
 
     // init talkieSockets
-    init_containers();
+    UpTo(i, MAX_TALKIES)
+        talkieSockets[i] = -1;
 
     // print welcome msg  
     print_router_greeting();
@@ -171,7 +166,7 @@ void *process_talkie(void *p)
     if (youAreBigboy)
     {
         // send youAreBigboy = 1 to talkie
-        if (send_data(talkieSocket, (char *)&youAreBigboy, sizeof(int), 3) <= 0)
+        if (send_data(talkieSocket, (char *)&youAreBigboy, sizeof(int), TYPE_OTHER_MSG) <= 0)
             goto END_PROCESS_TALKIE;
 
         // fetch nodeinfo from him
@@ -199,11 +194,11 @@ void *process_talkie(void *p)
         pthread_mutex_unlock(&mutex);
 
         // send youAreBigboy = 0 to talkie
-        if (send_data(talkieSocket, (char *)&youAreBigboy, sizeof(int), 3) <= 0)
+        if (send_data(talkieSocket, (char *)&youAreBigboy, sizeof(int), TYPE_OTHER_MSG) <= 0)
             goto END_PROCESS_TALKIE;
 
         // send nodeinfo of bigboy to talkie
-        if (send_data(talkieSocket, (char *)&bigboyInfo, sizeof(talkie_info), 1) <= 0)
+        if (send_data(talkieSocket, (char *)&bigboyInfo, sizeof(talkie_info), TYPE_INFO) <= 0)
             goto END_PROCESS_TALKIE;
 
         // fetch nodeinfo from him

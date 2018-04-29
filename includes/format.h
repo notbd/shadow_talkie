@@ -18,33 +18,31 @@
 void print_router_usage();
 
 /**
- * Prints talkie usage.
- */
-void print_talkie_usage();
-
-/**
  * Prints router greeting message.
  */
 void print_router_greeting();
 
 /**
- * Prints talkie greeting.
+ * Prints talkie joining message on router.
  */
-void print_talkie_greeting_to_window();
+void print_talkie_join(char *name, char *ip, int isBigboy);
 
 /**
- * Prints goodbye message when router or talkie exits.
+ * Prints talkie leaving message on router.
+ */
+void print_talkie_left(char *name);
+
+/**
+ * Prints goodbye message when router exits.
  */
 void print_router_goodbye();
 
 /**
- * Prints info of leaving talkie.
+ * Prints talkie usage.
  */
-void print_talkie_left(char *name);
-
-void print_talkie_join(char *name, char *ip, int isBigboy);
+void print_talkie_usage();
 
 /**
- * Prints message at talkies when router left.
+ * Prints talkie greeting message on chat window.
  */
-void print_router_left();
+void print_talkie_greeting_to_window();

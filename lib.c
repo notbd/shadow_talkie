@@ -63,6 +63,55 @@ ssize_t send_data(int socket, const char *buffer, size_t size, int type)
     return status;
 }
 
+char *get_local_ipv4_ip()
+{
+    struct ifaddrs *iflist, *interface;
+
+    // get a linked list of ifaddrs
+    if (getifaddrs(&iflist) < 0)
+    {
+        perror("getifaddrs()");
+        return NULL;
+    }
+
+    // loop through the list and look for target
+    for (interface = iflist; interface; interface = interface->ifa_next)
+    {
+        // ## filter for default gateway; dummy implementation using hardcoded strcmp on ifa_name
+        if (strcmp(interface->ifa_name, "en0") && strcmp(interface->ifa_name, "eth0") && strcmp(interface->ifa_name, "wlp2s0"))
+            continue;
+        int af = interface->ifa_addr->sa_family;
+        const void *addr;
+        char buf[INET_ADDRSTRLEN];
+
+        // filter for IPv4 addr
+        switch (af)
+        {
+        case AF_INET:
+            addr = &((struct sockaddr_in *)interface->ifa_addr)->sin_addr;
+            break;
+        default:
+            addr = NULL;
+        }
+
+        // parse addr into string if found the valid default IPv4 IP
+        if (addr)
+        {
+            if (!inet_ntop(af, addr, buf, sizeof(buf)))
+            {
+                perror("inet_ntop()");
+                continue;
+            }
+            freeifaddrs(iflist);
+            return strdup(buf);
+        }
+    }
+
+    // return NULL if no specified addr was found
+    freeifaddrs(iflist);
+    return NULL;
+}
+
 char *create_message(char *name, char *message)
 {
     int name_len = strlen(name);
@@ -139,51 +188,3 @@ ssize_t write_all_to_socket(int socket, const char *buffer, size_t count)
     return counter;
 }
 
-char *get_local_ip()
-{
-    struct ifaddrs *iflist, *interface;
-
-    // get a linked list of ifaddrs
-    if (getifaddrs(&iflist) < 0)
-    {
-        perror("getifaddrs()");
-        return NULL;
-    }
-
-    // loop through the list and look for target
-    for (interface = iflist; interface; interface = interface->ifa_next)
-    {
-        // ## filter for default gateway; dummy implementation using hardcoded strcmp on ifa_name
-        if (strcmp(interface->ifa_name, "en0") && strcmp(interface->ifa_name, "eth0") && strcmp(interface->ifa_name, "wlp2s0"))
-            continue;
-        int af = interface->ifa_addr->sa_family;
-        const void *addr;
-        char buf[INET_ADDRSTRLEN];
-
-        // filter for IPv4 addr
-        switch (af)
-        {
-        case AF_INET:
-            addr = &((struct sockaddr_in *)interface->ifa_addr)->sin_addr;
-            break;
-        default:
-            addr = NULL;
-        }
-
-        // parse addr into string if found the valid default IPv4 IP
-        if (addr)
-        {
-            if (!inet_ntop(af, addr, buf, sizeof(buf)))
-            {
-                perror("inet_ntop()");
-                continue;
-            }
-            freeifaddrs(iflist);
-            return strdup(buf);
-        }
-    }
-    
-    // return NULL if no specified addr was found
-    freeifaddrs(iflist);
-    return NULL;
-}
