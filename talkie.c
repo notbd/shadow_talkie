@@ -111,8 +111,6 @@ void run_talkie()
     strcpy((char *)myInfo.name, buf);
     free(buf);
     write_message_to_screen("[TALKIE] Welcome, %s! Enjoy your p2p chat!\n\n", (char *)myInfo.name);
-    write_message_to_screen("[TALKIE] Chat Window:\n");
-    write_message_to_screen("------------------------\n");
     char *ipstring = get_local_ipv4_ip();
     strcpy((char *)myInfo.ip, ipstring);
     free(ipstring);
@@ -262,9 +260,12 @@ void run_mini_client()
     {
         // !! (naive) make sure server part is online
         sleep(1);
-
+        
         // connect to server thread
         bigboySocket = connect_to_server(LOCAL_HOST, SERVER_PORT);
+
+        // write bigboy prompt to screen
+        write_message_to_screen("[TALKIE] YOU ARE THE BIGBOY!\n[TALKIE] The chat will be dismissed when you exit.\n\n");
     }
 
     // I am a normal talkie!
@@ -277,6 +278,9 @@ void run_mini_client()
         if (send_data(bigboySocket, (char *)&myInfo, sizeof(talkie_info), TYPE_INFO) <= 0)
             return;
     }
+
+    write_message_to_screen("[TALKIE] Chat Window:\n");
+    write_message_to_screen("------------------------\n");
 
     // create threads to handle data
     pthread_create(&threads[2], NULL, write_to_bigboy, NULL);
