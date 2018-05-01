@@ -37,6 +37,7 @@
  * 
  */
 #define ROUTER_HOST "10.195.87.81"
+// #define ROUTER_HOST "192.168.86.44"
 
 /**
  * The numeric local host address string for bigboy to loop back its connection
@@ -116,11 +117,11 @@
  */
 #define ROUTER_DISCONNECT_NOTI "[TALKIE] Router has detached... but keep rocking the p2p party!"
 
-/**
+    /**
  * Struct that provides information about a talkie
  * 
  */
-typedef struct talkie_info
+    typedef struct talkie_info
 {
     char ip[INET_ADDRSTRLEN];
     char name[USERNAME_LENGTH]; // user name should not be more than 16 Bytes.
