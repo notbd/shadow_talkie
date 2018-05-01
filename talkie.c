@@ -116,8 +116,9 @@ void run_talkie()
     free(ipstring);
 
     // connect to router
+    write_message_to_screen("[TALKIE] Establishing communication with router ...\n");
     routerSocket = connect_to_server(ROUTER_HOST, ROUTER_PORT);
-
+    write_message_to_screen("[TALKIE] Router connection successful.\n\n");
     // set up tools
     int type_dump;
     char *buffer = NULL;
@@ -279,8 +280,8 @@ void run_mini_client()
             return;
     }
 
-    write_message_to_screen("[TALKIE] Chat Window:\n");
-    write_message_to_screen("------------------------\n");
+    write_message_to_screen("[ - CHAT WINDOW - ]\n");
+    write_message_to_screen("=================================================\n");
 
     // create threads to handle data
     pthread_create(&threads[2], NULL, write_to_bigboy, NULL);
@@ -425,6 +426,12 @@ int connect_to_server(const char *host, const char *port)
     // connect!
     if (connect(sock_fd, result->ai_addr, result->ai_addrlen) == -1)
     {
+        if (!strcmp(host, ROUTER_HOST))
+        {
+            write_message_to_screen("[TALKIE] Router not online :(\n[TALKIE] Exiting ...");
+            sleep(3);
+            exit(1);
+        }
         perror("connect()");
         exit(1);
     }
@@ -526,4 +533,3 @@ void *read_from_bigboy(void *arg)
     pthread_cleanup_pop(0);
     return 0;
 }
-

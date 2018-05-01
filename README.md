@@ -29,7 +29,7 @@ make talkie
 ./talkie
 
 ```
-> NOTE: For successful connection, keep router and clients connected to the same local network and MAKE SURE to modify `ROUTER_HOST` macro under `includes/lib.h` to correctly match router's local IPv4 IP address before make.
+> NOTE: for successful connection, keep router and clients connected to the same local network and MAKE SURE to modify `ROUTER_HOST` macro under `includes/lib.h` to correctly match router's local IPv4 IP address before make.
 
 - encryption: under construction 
 

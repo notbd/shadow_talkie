@@ -36,10 +36,10 @@
  * ## otherwise will not be able to successfully establish connection
  * 
  */
-#define ROUTER_HOST "192.168.86.44"
+#define ROUTER_HOST "10.195.87.81"
 
 /**
- * The numeric host address string for router to establish routing connection
+ * The numeric local host address string for bigboy to loop back its connection
  * 
  */
 #define LOCAL_HOST "127.0.0.1"

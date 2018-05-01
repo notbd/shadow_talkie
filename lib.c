@@ -78,8 +78,14 @@ char *get_local_ipv4_ip()
     for (interface = iflist; interface; interface = interface->ifa_next)
     {
         // ## filter for default gateway; dummy implementation using hardcoded strcmp on ifa_name
-        if (strcmp(interface->ifa_name, "en0") && strcmp(interface->ifa_name, "eth0") && strcmp(interface->ifa_name, "wlp2s0"))
+        // ## including some common aliases for interface of default gateway:
+        if (strcmp(interface->ifa_name, "en0") && 
+            strcmp(interface->ifa_name, "eth0") && 
+            strcmp(interface->ifa_name, "wlp1s0") && 
+            strcmp(interface->ifa_name, "wlp2s0") && 
+            strcmp(interface->ifa_name, "wlp3s0"))
             continue;
+            
         int af = interface->ifa_addr->sa_family;
         const void *addr;
         char buf[INET_ADDRSTRLEN];
